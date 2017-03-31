@@ -1,0 +1,133 @@
+  <div id="drawArea" style="width:100%;height:500px;">
+  </div>
+  <div id="uploadArea">
+    <input id="uploadFile" name="image" type="file" />
+  </div>
+
+  <a id="getData" onClick="image_up()">Get Data</a>
+
+  <script>
+    $("#uploadFile").change(function() {
+      var canvas = $("#image");
+      //var ctx = canvas[0].getContext("2d");
+
+      // 選択されたファイルを取得
+      var file = this.files[0];
+
+      // 画像ファイル以外は処理中止
+      if (!file.type.match(/^image\/(png|jpeg|gif)$/)) return;
+
+      var image = new Image();
+      var reader = new FileReader();
+
+      // File APIを使用し、ローカルファイルを読み込む
+      reader.onload = function(evt) {
+
+        // 画像のURLをソースに設定
+        image.src = evt.target.result;
+        //画像をdivタグ内に描画
+        var elem = document.getElementById("drawArea");
+        elem.innerHTML =  '<img src="' + image.src + '" id="image">';
+        $('#image').cropper({
+          aspectRatio: 1 / 1,
+        });
+      }
+
+      // ファイルを読み込み、データをBase64でエンコードされたデータURLにして返す
+      reader.readAsDataURL(file);
+    });
+
+
+    function image_up(){
+      var url = $('#image').cropper('getCroppedCanvas').toDataURL('image/jpeg');
+      var formData = new FormData();
+
+      ImgB64Resize(url, 250, 250, function(img_b64) {
+        // Destination Image
+        //document.getElementById("img_dst").src = img_b64;
+
+        formData.append('croppedImage', img_b64);
+        formData.append('size', "lg");
+
+        $.ajax('/images/upload', {
+          method: "POST",
+          data: formData,
+          processData: false,
+          contentType: false,
+          success: function () {
+            console.log('Upload success');
+          },
+          error: function () {
+            console.log('Upload error');
+          }
+        });
+      });
+
+      ImgB64Resize(url, 50, 50, function(img_b64) {
+        // Destination Image
+        //document.getElementById("img_dst").src = img_b64;
+
+        formData.append('croppedImage', img_b64);
+        formData.append('size', "min");
+
+        $.ajax('/images/upload', {
+          method: "POST",
+          data: formData,
+          processData: false,
+          contentType: false,
+          success: function () {
+            console.log('Upload success');
+          },
+          error: function () {
+            console.log('Upload error');
+          }
+        });
+      });
+    }
+
+    function ImgB64Resize(imgB64_src, width, height, callback) {
+      var imgB64_dst;
+      // Image Type
+      var img_type = imgB64_src.substring(5, imgB64_src.indexOf(";"));
+      // Source Image
+      var img = new Image();
+      img.onload = function() {
+        // New Canvas
+        var canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        // Draw (Resize)
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        // Destination Image
+        imgB64_dst = canvas.toDataURL(img_type);
+        //console.log(imgB64_dst);
+        callback(imgB64_dst);
+      };
+
+      img.src = imgB64_src;
+    }
+  </script>
+
+<%= form_for(image) do |f| %>
+  <% if image.errors.any? %>
+    <div id="error_explanation">
+      <h2><%= pluralize(image.errors.count, "error") %> prohibited this image from being saved:</h2>
+
+      <ul>
+      <% image.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :title %>
+    <%= f.text_field :title %>
+  </div>
+
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>
